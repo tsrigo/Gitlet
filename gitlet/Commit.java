@@ -2,9 +2,12 @@ package gitlet;
 
 // TODO: any imports you need here
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static gitlet.Utils.*;
 
 /** Represents a gitlet commit object.
  *  TODO: It's a good idea to give a description here of what else this Class
@@ -25,29 +28,51 @@ public class Commit implements Serializable {
     private String message;
     /** The timestamp of the Commit. */
     private String timestamp;
-    /** The reference to the files. */
+    // /** The SHA-1 of the commit. */
+    // private String SHA;
+    /** The reference to the files SHA-1. */
     private HashMap<String, String> ids;
     /** The reference to parent. */
     private ArrayList<String> parents;
 
-    public Commit(String message, String timestamp){
+    public Commit(String message, String timestamp) {
         this.message = message;
         this.timestamp = timestamp;
         ids = new HashMap<>();
         parents = new ArrayList<>();
     }
 
-    public Commit(Commit parent, String message, String timestamp){
+    public Commit(Commit parent, String message, String timestamp) {
         this.message = message;
         this.timestamp = timestamp;
         this.ids = new HashMap<>(parent.ids);
         parents = new ArrayList<>();
-        parents.add(Utils.sha1(parent));
+        parents.add(Utils.sha1((Object) serialize(parent)));
     }
 
-    public String getFilesha(String filename){
+    public Commit() {
+        this.message = "hhh";
+    }
+
+    public String getFilesha(String filename) {
         return ids.get(filename);
     }
 
+    public void addFile(String filename, String sha){
+        ids.put(filename, sha);
+    }
     /* TODO: fill in the rest of this class. */
+
+    @Override
+    public String toString(){
+        return "Time stamp: " + this.timestamp + "  Message: " + this.message
+                + " Files: " + ids.keySet().toString() + '\n';
+    }
+
+    public static void main(String[] args) {
+        File file = join(Repository.COMIT_DIR, "hhh.txt");
+        // writeContents(file, "hhh");
+        System.out.println("hhh!!!");
+        file.delete();
+    }
 }

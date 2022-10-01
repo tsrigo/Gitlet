@@ -38,6 +38,14 @@ public class Main {
                 }
                 repo.add(args[1]);
                 break;
+            case "commit":
+                if (args.length < 2){
+                    System.out.println("Please enter a commit message.");
+                    System.exit(0);
+                }
+                assert repo != null;
+                repo.commit(args[1]);
+                break;
             // TODO: FILL THE REST IN
         }
         writeObject(repoDir, repo);
