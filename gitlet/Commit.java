@@ -2,7 +2,9 @@ package gitlet;
 
 // TODO: any imports you need here
 
-import java.util.Date; // TODO: You'll likely use this in this class
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /** Represents a gitlet commit object.
  *  TODO: It's a good idea to give a description here of what else this Class
@@ -10,7 +12,7 @@ import java.util.Date; // TODO: You'll likely use this in this class
  *
  *  @author TODO
  */
-public class Commit {
+public class Commit implements Serializable {
     /**
      * TODO: add instance variables here.
      *
@@ -21,6 +23,31 @@ public class Commit {
 
     /** The message of this Commit. */
     private String message;
+    /** The timestamp of the Commit. */
+    private String timestamp;
+    /** The reference to the files. */
+    private HashMap<String, String> ids;
+    /** The reference to parent. */
+    private ArrayList<String> parents;
+
+    public Commit(String message, String timestamp){
+        this.message = message;
+        this.timestamp = timestamp;
+        ids = new HashMap<>();
+        parents = new ArrayList<>();
+    }
+
+    public Commit(Commit parent, String message, String timestamp){
+        this.message = message;
+        this.timestamp = timestamp;
+        this.ids = new HashMap<>(parent.ids);
+        parents = new ArrayList<>();
+        parents.add(Utils.sha1(parent));
+    }
+
+    public String getFilesha(String filename){
+        return ids.get(filename);
+    }
 
     /* TODO: fill in the rest of this class. */
 }
