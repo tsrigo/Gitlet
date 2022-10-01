@@ -7,13 +7,15 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static gitlet.Utils.*;
+import static gitlet.Utils.join;
+import static gitlet.Utils.serialize;
 
-/** Represents a gitlet commit object.
+/**
+ * Represents a gitlet commit object.
  *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
- *  @author TODO
+ * @author TODO
  */
 public class Commit implements Serializable {
     /**
@@ -24,15 +26,23 @@ public class Commit implements Serializable {
      * variable is used. We've provided one example for `message`.
      */
 
-    /** The message of this Commit. */
-    private String message;
-    /** The timestamp of the Commit. */
+    /**
+     * The message of this Commit.
+     */
+    private final String message;
+    /**
+     * The timestamp of the Commit.
+     */
     private String timestamp;
     // /** The SHA-1 of the commit. */
     // private String SHA;
-    /** The reference to the files SHA-1. */
+    /**
+     * The reference to the files SHA-1.
+     */
     private HashMap<String, String> ids;
-    /** The reference to parent. */
+    /**
+     * The reference to parent.
+     */
     private ArrayList<String> parents;
 
     public Commit(String message, String timestamp) {
@@ -47,26 +57,11 @@ public class Commit implements Serializable {
         this.timestamp = timestamp;
         this.ids = new HashMap<>(parent.ids);
         parents = new ArrayList<>();
-        parents.add(Utils.sha1((Object) serialize(parent)));
+        parents.add(Utils.sha1(serialize(parent)));
     }
 
     public Commit() {
         this.message = "hhh";
-    }
-
-    public String getFilesha(String filename) {
-        return ids.get(filename);
-    }
-
-    public void addFile(String filename, String sha){
-        ids.put(filename, sha);
-    }
-    /* TODO: fill in the rest of this class. */
-
-    @Override
-    public String toString(){
-        return "Time stamp: " + this.timestamp + "  Message: " + this.message
-                + " Files: " + ids.keySet().toString() + '\n';
     }
 
     public static void main(String[] args) {
@@ -74,5 +69,20 @@ public class Commit implements Serializable {
         // writeContents(file, "hhh");
         System.out.println("hhh!!!");
         file.delete();
+    }
+
+    public String getFilesha(String filename) {
+        return ids.get(filename);
+    }
+    /* TODO: fill in the rest of this class. */
+
+    public void addFile(String filename, String sha) {
+        ids.put(filename, sha);
+    }
+
+    @Override
+    public String toString() {
+        return "Time stamp: " + this.timestamp + "  Message: " + this.message
+                + " Files: " + ids.keySet() + '\n';
     }
 }
