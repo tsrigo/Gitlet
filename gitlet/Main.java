@@ -59,8 +59,16 @@ public class Main {
                 }
                 assert repo != null;
                 repo.rm(args[1]);
+                break;
             case "log":
                 repo.log();
+                break;  // remember to add the break.
+            case "global-log":
+                repo.global_log();
+                break;
+            case "find":
+                repo.find(args[1]);
+                break;
                 // TODO: FILL THE REST IN
         }
         writeObject(REPO_DIR, repo);

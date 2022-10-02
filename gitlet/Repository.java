@@ -75,7 +75,7 @@ public class Repository implements Serializable {
     /**
      * Commits to SHA-1;
      */
-    private static HashMap<Commit, String> Commit2Sha = new HashMap<>();
+    private HashMap<Commit, String> Commit2Sha = new HashMap<>();
     /**
      * This flag is used to notify whether there is an removal of files.
      */
@@ -84,6 +84,7 @@ public class Repository implements Serializable {
     public Repository() {
         LinkedList<Commit> commits = new LinkedList<>();
         currentCommit = new Commit("initial commit", "1970/02/01 00:00:00");
+        commit2sha(currentCommit);
         commits.addFirst(currentCommit);
         currentBranch = commits;
 
@@ -168,6 +169,26 @@ public class Repository implements Serializable {
             System.out.println(x);
         }
     }
+
+    public void global_log() {
+        for (Commit x : Commit2Sha.keySet()){
+            System.out.println(x);
+        }
+    }
+
+    public void find(String message){
+        boolean flag = false;
+        for (Commit x : Commit2Sha.keySet()){
+            if (x.getMessage().equals(message)){
+                System.out.println(commit2sha(x));
+                flag = true;
+            }
+        }
+        if (!flag){
+            System.out.println("Found no commit with that message.");
+        }
+        System.exit(0);
+    }
     private void removeStage(File X) {
         if (!stagingArea.contains(X)) {
             System.out.println(X + " was already removed.");
@@ -183,7 +204,7 @@ public class Repository implements Serializable {
         workingFile.delete();
     }
 
-    public static String commit2sha(Commit commit){
+    public String commit2sha(Commit commit){
         String t = Commit2Sha.get(commit);
         if (t == null) {
             t = sha1((Object) serialize(commit));

@@ -86,6 +86,9 @@ public class Commit implements Serializable {
         file.delete();
     }
 
+    public String getMessage() {
+        return this.message;
+    }
     public String getFilesha(String filename) {
         return ids.get(filename);
     }
@@ -121,7 +124,7 @@ public class Commit implements Serializable {
     @Override
     public String toString() {
         return "\n===\n"
-                + "commit " + Repository.commit2sha(this) + '\n'
+                + "commit " + sha1((Object) serialize(this)) + '\n'
                 + "Date: " + this.timestamp + '\n'
                 + this.message + '\n';
     }
