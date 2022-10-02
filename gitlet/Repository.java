@@ -72,7 +72,10 @@ public class Repository implements Serializable {
      * SHA-1 to commits
      */
     private HashMap<String, Commit> sha2commit;
-
+    /**
+     * Commits to SHA-1;
+     */
+    private static HashMap<Commit, String> Commit2Sha = new HashMap<>();
     /**
      * This flag is used to notify whether there is an removal of files.
      */
@@ -80,7 +83,7 @@ public class Repository implements Serializable {
 
     public Repository() {
         LinkedList<Commit> commits = new LinkedList<>();
-        currentCommit = new Commit("initial commit", "1970/2/1 00:00:00");
+        currentCommit = new Commit("initial commit", "1970/02/01 00:00:00");
         commits.addFirst(currentCommit);
         currentBranch = commits;
 
@@ -144,7 +147,7 @@ public class Repository implements Serializable {
         currentCommit = newCommit;
         System.out.println("New currentCommit is: " + newCommit.toString());
         System.out.println("Commit tree updated! The current commit tree is: \n" + currentBranch.toString());
-        String commitSha = sha1((Object) serialize(newCommit));
+        String commitSha = commit2sha(newCommit);
         sha2commit.put(commitSha, newCommit);
 
         File D = join(COMIT_DIR, commitSha);
@@ -158,6 +161,13 @@ public class Repository implements Serializable {
         }
     }
 
+    public void log(){
+        //TODO: log may not start from the very first of the current branch.
+        LinkedList<Commit> tep = currentBranch;
+        for (Commit x : tep){
+            System.out.println(x);
+        }
+    }
     private void removeStage(File X) {
         if (!stagingArea.contains(X)) {
             System.out.println(X + " was already removed.");
@@ -173,6 +183,14 @@ public class Repository implements Serializable {
         workingFile.delete();
     }
 
+    public static String commit2sha(Commit commit){
+        String t = Commit2Sha.get(commit);
+        if (t == null) {
+            t = sha1((Object) serialize(commit));
+            Commit2Sha.put(commit, t);
+        }
+        return t;
+    }
     /**
      * Unstage the file if it is currently staged for addition.
      * Or remove the file in tracking area.

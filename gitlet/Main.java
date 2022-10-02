@@ -59,6 +59,8 @@ public class Main {
                 }
                 assert repo != null;
                 repo.rm(args[1]);
+            case "log":
+                repo.log();
                 // TODO: FILL THE REST IN
         }
         writeObject(REPO_DIR, repo);

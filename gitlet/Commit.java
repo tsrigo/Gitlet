@@ -7,8 +7,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static gitlet.Utils.join;
-import static gitlet.Utils.serialize;
+import static gitlet.Utils.*;
 
 /**
  * Represents a gitlet commit object.
@@ -44,6 +43,7 @@ public class Commit implements Serializable {
      * The reference to parent. SHA-1 of the parent commit are stored in it.
      */
     private ArrayList<String> parents;
+
 
     public Commit(String message, String timestamp) {
         this.message = message;
@@ -120,7 +120,9 @@ public class Commit implements Serializable {
 
     @Override
     public String toString() {
-        return "Time stamp: " + this.timestamp + "  Message: " + this.message
-                + " Files: " + ids.keySet() + '\n';
+        return "\n===\n"
+                + "commit " + Repository.commit2sha(this) + '\n'
+                + "Date: " + this.timestamp + '\n'
+                + this.message + '\n';
     }
 }
