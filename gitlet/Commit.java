@@ -52,7 +52,7 @@ public class Commit implements Serializable {
         parents = new ArrayList<>();
     }
 
-    public Commit(HashMap<String, String> ids, String message, String timestamp){
+    public Commit(HashMap<String, String> ids, String message, String timestamp) {
         this.ids = new HashMap<>(ids);
         this.message = message;
         this.timestamp = timestamp;
@@ -89,6 +89,7 @@ public class Commit implements Serializable {
     public String getMessage() {
         return this.message;
     }
+
     public String getFilesha(String filename) {
         return ids.get(filename);
     }
@@ -98,7 +99,7 @@ public class Commit implements Serializable {
         ids.put(filename, sha);
     }
 
-    public void addParent(String parentSha){
+    public void addParent(String parentSha) {
         parents.add(parentSha);
     }
 
@@ -117,7 +118,7 @@ public class Commit implements Serializable {
 //    }
 
 
-    public void removeFile(String filename){
+    public void removeFile(String filename) {
         ids.remove(filename);
     }
 

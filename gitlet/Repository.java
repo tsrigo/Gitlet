@@ -162,33 +162,50 @@ public class Repository implements Serializable {
         }
     }
 
-    public void log(){
+    public void rm(String filename) {
+        File file = join(STAGING_DIR, filename);
+        if (stagingArea.isEmpty() && trackingArea.isEmpty()) {
+            System.out.println("No reason to remove the file.");
+            System.exit(0);
+        }
+        if (stagingArea.contains(file)) {
+            removeStage(file);
+        }
+        if (currentCommit.getFilesha(filename) != null) {    // tracking area will always be same with currentCommit.ids
+            System.out.println("Notice: " + filename + " will be deleted");
+            removeTrack(filename);
+            removalFlag = true;
+        }
+    }
+
+    public void log() {
         //TODO: log may not start from the very first of the current branch.
         LinkedList<Commit> tep = currentBranch;
-        for (Commit x : tep){
+        for (Commit x : tep) {
             System.out.println(x);
         }
     }
 
     public void global_log() {
-        for (Commit x : Commit2Sha.keySet()){
+        for (Commit x : Commit2Sha.keySet()) {
             System.out.println(x);
         }
     }
 
-    public void find(String message){
+    public void find(String message) {
         boolean flag = false;
-        for (Commit x : Commit2Sha.keySet()){
-            if (x.getMessage().equals(message)){
+        for (Commit x : Commit2Sha.keySet()) {
+            if (x.getMessage().equals(message)) {
                 System.out.println(commit2sha(x));
                 flag = true;
             }
         }
-        if (!flag){
+        if (!flag) {
             System.out.println("Found no commit with that message.");
         }
         System.exit(0);
     }
+
     private void removeStage(File X) {
         if (!stagingArea.contains(X)) {
             System.out.println(X + " was already removed.");
@@ -198,13 +215,14 @@ public class Repository implements Serializable {
             System.out.println("Warning: Delete not exist file.");
         }
     }
-    private void removeTrack(String filename){
+
+    private void removeTrack(String filename) {
         File workingFile = join(CWD, filename);
         trackingArea.remove(filename);
         workingFile.delete();
     }
 
-    public String commit2sha(Commit commit){
+    public String commit2sha(Commit commit) {
         String t = Commit2Sha.get(commit);
         if (t == null) {
             t = sha1((Object) serialize(commit));
@@ -217,20 +235,5 @@ public class Repository implements Serializable {
      * Or remove the file in tracking area.
      * @param filename The file to be removed.
      */
-    public void rm(String filename){
-        File file = join(STAGING_DIR, filename);
-        if (stagingArea.isEmpty() && trackingArea.isEmpty()){
-            System.out.println("No reason to remove the file.");
-            System.exit(0);
-        }
-        if (stagingArea.contains(file)){
-            removeStage(file);
-        }
-        if (currentCommit.getFilesha(filename) != null){    // tracking area will always be same with currentCommit.ids
-            System.out.println("Notice: " + filename + " will be deleted");
-            removeTrack(filename);
-            removalFlag = true;
-        }
-    }
     /* TODO: fill in the rest of this class. */
 }
