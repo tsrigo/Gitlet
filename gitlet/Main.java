@@ -58,7 +58,7 @@ public class Main {
                     System.exit(0);
                 }
                 assert repo != null;
-
+                repo.rm(args[1]);
                 // TODO: FILL THE REST IN
         }
         writeObject(REPO_DIR, repo);

@@ -33,7 +33,7 @@ public class Commit implements Serializable {
     /**
      * The timestamp of the Commit.
      */
-    private String timestamp;
+    private final String timestamp;
     // /** The SHA-1 of the commit. */
     // private String SHA;
     /**
@@ -41,7 +41,7 @@ public class Commit implements Serializable {
      */
     private HashMap<String, String> ids;
     /**
-     * The reference to parent.
+     * The reference to parent. SHA-1 of the parent commit are stored in it.
      */
     private ArrayList<String> parents;
 
@@ -52,16 +52,31 @@ public class Commit implements Serializable {
         parents = new ArrayList<>();
     }
 
-    public Commit(Commit parent, String message, String timestamp) {
+    public Commit(HashMap<String, String> ids, String message, String timestamp){
+        this.ids = new HashMap<>(ids);
         this.message = message;
         this.timestamp = timestamp;
-        this.ids = new HashMap<>(parent.ids);
+    }
+
+    public Commit(Commit copy, String message, String timestamp) {
+        this.message = message;
+        this.timestamp = timestamp;
+        this.ids = new HashMap<>(copy.ids);
         parents = new ArrayList<>();
-        parents.add(Utils.sha1(serialize(parent)));
+        // parents.add(Utils.sha1(serialize(parent)));
     }
 
     public Commit() {
         this.message = "hhh";
+        this.timestamp = "hhh";
+    }
+
+    public Commit(Commit parent) {
+        this.ids = new HashMap<>(parent.ids);
+        this.message = null;
+        this.timestamp = null;
+        parents = new ArrayList<>();
+        parents.add(Utils.sha1(serialize(parent)));
     }
 
     public static void main(String[] args) {
@@ -78,6 +93,29 @@ public class Commit implements Serializable {
 
     public void addFile(String filename, String sha) {
         ids.put(filename, sha);
+    }
+
+    public void addParent(String parentSha){
+        parents.add(parentSha);
+    }
+
+//    public void setMessage(String message){
+//        if (this.message != null) {
+//            throw new IllegalArgumentException("Message is already set");
+//        }
+//        this.message = message;
+//    }
+//
+//    public void setTimestamp(String timestamp){
+//        if (this.timestamp != null) {
+//            throw new IllegalArgumentException("Timestamp is already set");
+//        }
+//        this.timestamp = timestamp;
+//    }
+
+
+    public void removeFile(String filename){
+        ids.remove(filename);
     }
 
     @Override

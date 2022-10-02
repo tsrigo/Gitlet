@@ -45,7 +45,7 @@ public class Repository implements Serializable {
      */
     public static final File STAGING_DIR = join(GITLET_DIR, ".staging");
     /**
-     * Current commit: the new commit's parent.
+     * Current commit: the commit in front of the currentBranch.
      */
     private Commit currentCommit;
     /**
@@ -61,6 +61,10 @@ public class Repository implements Serializable {
      */
     private HashSet<File> stagingArea;
     /**
+     * The tracking area.
+     */
+    private HashMap<String, String> trackingArea;
+    /**
      * Treat sha-1 as a reference.
      */
     private HashMap<String, File> sha2file;
@@ -68,6 +72,11 @@ public class Repository implements Serializable {
      * SHA-1 to commits
      */
     private HashMap<String, Commit> sha2commit;
+
+    /**
+     * This flag is used to notify whether there is an removal of files.
+     */
+    private boolean removalFlag;
 
     public Repository() {
         LinkedList<Commit> commits = new LinkedList<>();
@@ -80,6 +89,7 @@ public class Repository implements Serializable {
         stagingArea = new HashSet<>();
         sha2file = new HashMap<>();
         sha2commit = new HashMap<>();
+        trackingArea = new HashMap<>();
     }
 
     public static Repository init() {
@@ -112,17 +122,19 @@ public class Repository implements Serializable {
             System.exit(0);
         }
         stagingArea.add(stagingFile);
+        trackingArea.put(filename, fileSha);
         writeContents(stagingFile, (Object) contents);
         System.out.println("The files you have staged are: " + stagingArea.toString());
     }
 
     public void commit(String message) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-        Commit newCommit = new Commit(currentCommit, message, dtf.format(LocalDateTime.now()));
-        if (stagingArea.isEmpty()) {
+        Commit newCommit = new Commit(trackingArea, message, dtf.format(LocalDateTime.now()));
+        if (stagingArea.isEmpty() && !removalFlag) {
             System.out.println("No changes added to the commit.");
             System.exit(0);
         }
+        removalFlag = false;
         for (File X : stagingArea) {
             String S = sha1((Object) readContents(X));
             newCommit.addFile(X.getName(), S);
@@ -152,7 +164,33 @@ public class Repository implements Serializable {
         }
         stagingArea.remove(X);
         if (!X.delete()) {
-            throw new IllegalArgumentException("delete fail!!!");
+            System.out.println("Warning: Delete not exist file.");
+        }
+    }
+    private void removeTrack(String filename){
+        File workingFile = join(CWD, filename);
+        trackingArea.remove(filename);
+        workingFile.delete();
+    }
+
+    /**
+     * Unstage the file if it is currently staged for addition.
+     * Or remove the file in tracking area.
+     * @param filename The file to be removed.
+     */
+    public void rm(String filename){
+        File file = join(STAGING_DIR, filename);
+        if (stagingArea.isEmpty() && trackingArea.isEmpty()){
+            System.out.println("No reason to remove the file.");
+            System.exit(0);
+        }
+        if (stagingArea.contains(file)){
+            removeStage(file);
+        }
+        if (currentCommit.getFilesha(filename) != null){    // tracking area will always be same with currentCommit.ids
+            System.out.println("Notice: " + filename + " will be deleted");
+            removeTrack(filename);
+            removalFlag = true;
         }
     }
     /* TODO: fill in the rest of this class. */
