@@ -85,6 +85,9 @@ public class Main {
                         break;
                 }
                 break;
+            case "branch":
+                repo.branch(args[1]);
+                break;
             default:
                 System.out.println("Undefined command.");
             // TODO: FILL THE REST IN

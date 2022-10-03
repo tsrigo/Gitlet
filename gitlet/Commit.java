@@ -65,8 +65,8 @@ public class Commit implements Serializable {
         // parents.add(Utils.sha1(serialize(parent)));
     }
 
-    public Commit() {
-        this.message = "hhh";
+    public Commit(String message) {
+        this.message = message;
         this.timestamp = "hhh";
     }
 
@@ -80,12 +80,21 @@ public class Commit implements Serializable {
 
 
     public static void main(String[] args) {
-        File file = join(Repository.COMIT_DIR, "hhh.txt");
-        // writeContents(file, "hhh");
-        HashSet<String> cwdFiles = new HashSet<>(Objects.requireNonNull(plainFilenamesIn(Repository.CWD)));
-        System.out.println(cwdFiles);
+        LinkedList<Commit> C = new LinkedList<>();
+        C.addFirst(new Commit("1"));
+        C.addFirst(new Commit("2"));
+        C.addFirst(new Commit("3"));
+        LinkedList<Commit> H = new LinkedList<>(C);
+        System.out.println(H.getFirst());
+        C.addFirst(new Commit("4"));
+        C.addFirst(new Commit("5"));
+        System.out.println(C.getFirst());
+        System.out.println(H.getFirst());
     }
 
+    public Set<String> getFiles(){
+        return ids.keySet();
+    }
     public String getMessage() {
         return this.message;
     }
@@ -137,6 +146,7 @@ public class Commit implements Serializable {
         return "\n===\n"
                 + "commit " + this.getSha() + '\n'
                 + "Date: " + this.timestamp + '\n'
-                + this.message + '\n';
+                + this.message + '\n'
+                + "Tracking Files: " + this.ids.keySet();
     }
 }
