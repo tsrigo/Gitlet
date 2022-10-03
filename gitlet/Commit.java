@@ -2,7 +2,6 @@ package gitlet;
 
 // TODO: any imports you need here
 
-import javax.naming.ldap.SortKey;
 import java.io.File;
 import java.io.Serializable;
 import java.util.*;
@@ -123,10 +122,20 @@ public class Commit implements Serializable {
         ids.remove(filename);
     }
 
+    public String getSha(){
+        String idsString, parentsString;
+        idsString = (ids == null)
+                ? ""
+                : ids.toString();
+        parentsString = (parents == null)
+                ? ""
+                : parents.toString();
+        return sha1(idsString+message+timestamp+parentsString);
+    }
     @Override
     public String toString() {
         return "\n===\n"
-                + "commit " + sha1((Object) serialize(this)) + '\n'
+                + "commit " + this.getSha() + '\n'
                 + "Date: " + this.timestamp + '\n'
                 + this.message + '\n';
     }

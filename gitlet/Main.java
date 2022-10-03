@@ -72,6 +72,21 @@ public class Main {
             case "status":
                 repo.status();
                 break;
+            case "checkout":
+                switch (args.length) {
+                    case 2:
+                        repo.checkoutBranch(args[1]);
+                        break;
+                    case 3:
+                        repo.checkoutFile(null, args[2]);
+                        break;
+                    case 4:
+                        repo.checkoutFile(args[1], args[3]);
+                        break;
+                }
+                break;
+            default:
+                System.out.println("Undefined command.");
             // TODO: FILL THE REST IN
         }
         writeObject(REPO_DIR, repo);
