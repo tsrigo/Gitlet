@@ -235,8 +235,8 @@ public class Repository implements Serializable {
         }
 
         System.out.println("\n=== Modifications Not Staged For Commit ===");
-        HashSet<String> allFiles = new HashSet<>();
-        HashSet<String> cwdFiles = new HashSet<>(Objects.requireNonNull(plainFilenamesIn(CWD)));
+        TreeSet<String> allFiles = new TreeSet<>();
+        TreeSet<String> cwdFiles = new TreeSet<>(Objects.requireNonNull(plainFilenamesIn(CWD)));
         allFiles.addAll(cwdFiles);
         allFiles.addAll(trackingArea.keySet());
         for (File f : stagingArea){
