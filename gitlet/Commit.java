@@ -2,10 +2,10 @@ package gitlet;
 
 // TODO: any imports you need here
 
+import javax.naming.ldap.SortKey;
 import java.io.File;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -79,11 +79,12 @@ public class Commit implements Serializable {
         parents.add(Utils.sha1(serialize(parent)));
     }
 
+
     public static void main(String[] args) {
         File file = join(Repository.COMIT_DIR, "hhh.txt");
         // writeContents(file, "hhh");
-        System.out.println("hhh!!!");
-        file.delete();
+        HashSet<String> cwdFiles = new HashSet<>(Objects.requireNonNull(plainFilenamesIn(Repository.CWD)));
+        System.out.println(cwdFiles);
     }
 
     public String getMessage() {

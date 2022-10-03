@@ -4,9 +4,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -51,7 +49,7 @@ public class Repository implements Serializable {
     /**
      * Current branch of commit tree.
      */
-    private LinkedList<Commit> currentBranch;
+    private String currentBranch;
     /**
      * Temporary storage of commits - HashMap.
      */
@@ -61,7 +59,7 @@ public class Repository implements Serializable {
      */
     private HashSet<File> stagingArea;
     /**
-     * The tracking area.
+     * The tracking area that has the files being tracked with its SHA-1.
      */
     private HashMap<String, String> trackingArea;
     /**
@@ -77,23 +75,24 @@ public class Repository implements Serializable {
      */
     private HashMap<Commit, String> Commit2Sha = new HashMap<>();
     /**
-     * This flag is used to notify whether there is an removal of files.
+     * Set used to record what files have been staged for removal.
      */
-    private boolean removalFlag;
+    private HashSet<String> removingArea;
 
     public Repository() {
         LinkedList<Commit> commits = new LinkedList<>();
         currentCommit = new Commit("initial commit", "1970/02/01 00:00:00");
         commit2sha(currentCommit);
         commits.addFirst(currentCommit);
-        currentBranch = commits;
 
         branches = new HashMap<>();
         branches.put("master", commits);
+        currentBranch = "master";
         stagingArea = new HashSet<>();
         sha2file = new HashMap<>();
         sha2commit = new HashMap<>();
         trackingArea = new HashMap<>();
+        removingArea = new HashSet<>();
     }
 
     public static Repository init() {
@@ -122,6 +121,7 @@ public class Repository implements Serializable {
             System.out.println("File is already committed.");
             if (stagingFile.exists()) {
                 removeStage(stagingFile);
+                stagingFile.delete();
             }
             System.exit(0);
         }
@@ -134,20 +134,20 @@ public class Repository implements Serializable {
     public void commit(String message) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         Commit newCommit = new Commit(trackingArea, message, dtf.format(LocalDateTime.now()));
-        if (stagingArea.isEmpty() && !removalFlag) {
+        if (stagingArea.isEmpty() && removingArea.isEmpty()) {
             System.out.println("No changes added to the commit.");
             System.exit(0);
         }
-        removalFlag = false;
+        removingArea.clear();
         for (File X : stagingArea) {
             String S = sha1((Object) readContents(X));
             newCommit.addFile(X.getName(), S);
             sha2file.put(S, X);
         }
-        currentBranch.addFirst(newCommit);
+        branches.get(currentBranch).addFirst(newCommit);
         currentCommit = newCommit;
-        System.out.println("New currentCommit is: " + newCommit.toString());
-        System.out.println("Commit tree updated! The current commit tree is: \n" + currentBranch.toString());
+//        System.out.println("New currentCommit is: " + newCommit.toString());
+//        System.out.println("Commit tree updated! The current commit tree is: \n" + branches.get(currentBranch).toString());
         String commitSha = commit2sha(newCommit);
         sha2commit.put(commitSha, newCommit);
 
@@ -159,6 +159,7 @@ public class Repository implements Serializable {
             byte[] contents = readContents(X);
             writeContents(file, (Object) contents);
             removeStage(X);
+            X.delete();
         }
     }
 
@@ -174,13 +175,13 @@ public class Repository implements Serializable {
         if (currentCommit.getFilesha(filename) != null) {    // tracking area will always be same with currentCommit.ids
             System.out.println("Notice: " + filename + " will be deleted");
             removeTrack(filename);
-            removalFlag = true;
         }
+        removingArea.add(filename);
     }
 
     public void log() {
         //TODO: log may not start from the very first of the current branch.
-        LinkedList<Commit> tep = currentBranch;
+        LinkedList<Commit> tep = branches.get(currentBranch);
         for (Commit x : tep) {
             System.out.println(x);
         }
@@ -206,16 +207,97 @@ public class Repository implements Serializable {
         System.exit(0);
     }
 
-    private void removeStage(File X) {
-        if (!stagingArea.contains(X)) {
-            System.out.println(X + " was already removed.");
+
+
+    public void status(){
+        System.out.println("=== Branches ===");
+        for (String x: new TreeSet<>(branches.keySet())){
+            if (x.equals(currentBranch)){
+                System.out.print('*');
+            }
+            System.out.println(x);
         }
-        stagingArea.remove(X);
-        if (!X.delete()) {
-            System.out.println("Warning: Delete not exist file.");
+
+        // TODO: This method is too ugly. Improve it.
+        System.out.println("\n=== Staged Files ===");
+        List<String> tep = new ArrayList<>();
+        for (File f : stagingArea){
+            tep.add(f.getName());
+        }
+        Collections.sort(tep);
+        for (String s : tep){
+            System.out.println(s);
+        }
+
+        System.out.println("\n=== Removed Files ===");
+        for (String f: new TreeSet<>(removingArea)){
+            System.out.println(f);
+        }
+
+        System.out.println("\n=== Modifications Not Staged For Commit ===");
+        HashSet<String> allFiles = new HashSet<>();
+        HashSet<String> cwdFiles = new HashSet<>(Objects.requireNonNull(plainFilenamesIn(CWD)));
+        allFiles.addAll(cwdFiles);
+        allFiles.addAll(trackingArea.keySet());
+        for (File f : stagingArea){
+            allFiles.add(f.getName());
+        }
+
+        for (String f: allFiles){
+            File stagingFile = join(STAGING_DIR, f);
+            File cwdFile = join(CWD, f);
+            // trackingSha refers to the f that was tracked in the last commit(current commit)
+            // stagingSha refers to the f that is staged in the present commit(newCommit)
+            String trackingSha = currentCommit.getFilesha(f);
+            String stagingSha = trackingArea.get(f);
+            // TODO: Is stagingArea can changed to type of String?
+            boolean isStaging = stagingArea.contains(stagingFile);
+            boolean isTracking = (trackingSha != null);
+            boolean inCwd = cwdFiles.contains(f);
+
+            if (inCwd) {
+                // if there is a modified file that is not staged, it will be marked modified.
+                // if there is a file that is staged but not same with the tracked version, it will be marked modified.
+                String cwdSha = sha1((Object) readContents(cwdFile));
+                if (isTracking && !isStaging && !cwdSha.equals(trackingSha)
+                || isStaging && !cwdSha.equals(stagingSha)){
+                    System.out.println(f + "(modified)");
+                }
+            }
+            else {
+                if (isTracking || isStaging) {
+                    System.out.println(f + "(deleted)");
+                }
+            }
+        }
+
+        System.out.println("\n=== Untracked Files ===");
+        for (String f: cwdFiles){
+            boolean isTracking = (trackingArea.get(f) != null);
+            if (!isTracking){
+                System.out.println(f + "(untracked)");
+            }
         }
     }
 
+    /**
+     * Removes the file from the stagingArea.
+     * @param filename the file to be removed
+     */
+    private void removeStage(File filename) {
+        if (!stagingArea.contains(filename)) {
+            System.out.println(filename + " was already removed.");
+        }
+        stagingArea.remove(filename);
+//        if (!filename.delete()) {
+//            System.out.println("Warning: Delete not exist file.");
+//        }
+    }
+
+    /**
+     * Removes the file from the trackingArea and the workingArea.
+     * @param filename the file to be removed
+     */
     private void removeTrack(String filename) {
         File workingFile = join(CWD, filename);
         trackingArea.remove(filename);

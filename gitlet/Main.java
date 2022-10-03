@@ -69,6 +69,9 @@ public class Main {
             case "find":
                 repo.find(args[1]);
                 break;
+            case "status":
+                repo.status();
+                break;
             // TODO: FILL THE REST IN
         }
         writeObject(REPO_DIR, repo);
