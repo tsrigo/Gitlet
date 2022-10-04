@@ -350,6 +350,16 @@ public class Repository implements Serializable {
         branches.put(branchName, newBranch);
     }
 
+    public void removeBranch(String branchName){
+        if (!branches.containsKey(branchName)){
+            System.out.println("A branch with that name does not exist.");
+        }
+        if (branchName.equals(currentBranch)){
+            System.out.println("Cannot remove the current branch.");
+        }
+        branches.remove(branchName);
+    }
+
     // Bellowed are some helper functions.
     /**
      * Removes the file from the stagingArea.

@@ -88,6 +88,8 @@ public class Main {
             case "branch":
                 repo.branch(args[1]);
                 break;
+            case "rm-branch":
+                repo.removeBranch(args[1]);
             default:
                 System.out.println("Undefined command.");
             // TODO: FILL THE REST IN
