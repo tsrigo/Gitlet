@@ -51,9 +51,9 @@ public class Repository implements Serializable {
      */
     private String currentBranch;
     /**
-     * Temporary storage of commits - HashMap.
+     * Each branch is a pointer to a commit, each commit has parent.
      */
-    private HashMap<String, LinkedList<Commit>> branches;
+    private HashMap<String, Commit> branches;
     /**
      * The files in staging area.
      */
@@ -80,11 +80,11 @@ public class Repository implements Serializable {
     private HashSet<String> removingArea;
 
     public Repository() {
-        LinkedList<Commit> commits = new LinkedList<>();
+//        LinkedList<Commit> commits = new LinkedList<>();
         Commit initialCommit = new Commit("initial commit", "1970/02/01 00:00:00");
 
         branches = new HashMap<>();
-        branches.put("master", commits);
+        branches.put("master", initialCommit);
         currentBranch = "master";
         stagingArea = new HashSet<>();
         sha2file = new HashMap<>();
@@ -93,7 +93,7 @@ public class Repository implements Serializable {
         removingArea = new HashSet<>();
 
         commit2sha(initialCommit);
-        commits.addFirst(initialCommit);
+//        commits.addFirst(initialCommit);
     }
 
     public static Repository init() {
@@ -107,7 +107,7 @@ public class Repository implements Serializable {
         return new Repository();
     }
     private Commit getCurrentCommit(){
-       return branches.get(currentBranch).getFirst();
+       return branches.get(currentBranch);
     }
     public void add(String filename) {
 //        System.out.println("Current commit is: " + currentCommit.toString());
@@ -147,13 +147,12 @@ public class Repository implements Serializable {
             newCommit.addFile(X.getName(), S);
 //            sha2file.put(S, X);
         }
-        branches.get(currentBranch).addFirst(newCommit);
-//        currentCommit = newCommit;
+        newCommit.setFirstParent(commit2sha(getCurrentCommit()));    // Add a commit to the commit tree.
+        branches.put(currentBranch, newCommit);
 //        System.out.println("New currentCommit is: " + newCommit);
 //        System.out.println("Commit tree updated! The current commit tree is: \n" + branches.get(currentBranch).toString());
         String commitSha = commit2sha(newCommit);
 //        System.out.println("The new commit sha is "+commitSha);
-//        sha2commit.put(commitSha, newCommit);
 
         File D = join(COMIT_DIR, commitSha);
         D.mkdir();
@@ -187,9 +186,10 @@ public class Repository implements Serializable {
 
     public void log() {
         //TODO: log may not start from the very first of the current branch.
-        LinkedList<Commit> tep = branches.get(currentBranch);
-        for (Commit x : tep) {
-            System.out.println(x);
+        Commit tep = branches.get(currentBranch);
+        while (tep != null){
+            System.out.println(tep);
+            tep = sha2commit.get(tep.getFirstParent());
         }
     }
 
@@ -311,12 +311,12 @@ public class Repository implements Serializable {
         if (branchName.equals(currentBranch)){
             System.out.println("No need to checkout the current branch.");
         }
-        Commit checkoutCommit = branches.get(branchName).getFirst();
+        Commit checkoutCommit = branches.get(branchName);
         Commit currentCommit = getCurrentCommit();
 //        System.out.println("checkoutCommit is: " + checkoutCommit);
 //        System.out.println("currentCommit is " + currentCommit);
         Set<String> checkoutFiles = checkoutCommit.getFiles();
-        Set<String> currentFiles = getCurrentCommit().getFiles();
+        Set<String> currentFiles = currentCommit.getFiles();
         List<String> cwdFiles = Objects.requireNonNull(plainFilenamesIn(CWD));
 //        System.out.println("checkout files: " + checkoutFiles.toString());
 //        System.out.println("current files: " + currentFiles.toString());
@@ -346,7 +346,7 @@ public class Repository implements Serializable {
             System.out.println("A branch with that name already exists.");
             System.exit(0);
         }
-        LinkedList<Commit> newBranch = new LinkedList<>(branches.get(currentBranch));
+        Commit newBranch = branches.get(currentBranch);
         branches.put(branchName, newBranch);
     }
 

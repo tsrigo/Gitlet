@@ -2,7 +2,6 @@ package gitlet;
 
 // TODO: any imports you need here
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 
@@ -41,14 +40,13 @@ public class Commit implements Serializable {
     /**
      * The reference to parent. SHA-1 of the parent commit are stored in it.
      */
-    private ArrayList<String> parents;
-
+    private String firstParent, secondParent;
 
     public Commit(String message, String timestamp) {
         this.message = message;
         this.timestamp = timestamp;
         ids = new HashMap<>();
-        parents = new ArrayList<>();
+        firstParent = secondParent = null;
     }
 
     public Commit(HashMap<String, String> ids, String message, String timestamp) {
@@ -57,27 +55,10 @@ public class Commit implements Serializable {
         this.timestamp = timestamp;
     }
 
-    public Commit(Commit copy, String message, String timestamp) {
-        this.message = message;
-        this.timestamp = timestamp;
-        this.ids = new HashMap<>(copy.ids);
-        parents = new ArrayList<>();
-        // parents.add(Utils.sha1(serialize(parent)));
-    }
-
     public Commit(String message) {
         this.message = message;
         this.timestamp = "hhh";
     }
-
-    public Commit(Commit parent) {
-        this.ids = new HashMap<>(parent.ids);
-        this.message = null;
-        this.timestamp = null;
-        parents = new ArrayList<>();
-        parents.add(Utils.sha1(serialize(parent)));
-    }
-
 
     public static void main(String[] args) {
         LinkedList<Commit> C = new LinkedList<>();
@@ -92,24 +73,57 @@ public class Commit implements Serializable {
         System.out.println(H.getFirst());
     }
 
+    /**
+     * Gets the files that the commit has snapshot.
+     * @return the files that the commit has snapshot
+     */
     public Set<String> getFiles(){
         return ids.keySet();
     }
+
+    /**
+     * Gets the message of this commit.
+     * @return the message of this commit.
+     */
     public String getMessage() {
         return this.message;
     }
 
+    /**
+     * Gets the sha-1 of the given filename of this commit has snapshot.
+     * @param filename The file we want to know.
+     * @return Null if the file does not exist. Otherwise its sha-1.
+     */
     public String getFilesha(String filename) {
         return ids.get(filename);
     }
-    /* TODO: fill in the rest of this class. */
 
+    /**
+     * Adds a file to the snapshot.
+     * @param filename The file we want to save.
+     * @param sha The sha-1 mapping with the content of the file.
+     */
     public void addFile(String filename, String sha) {
         ids.put(filename, sha);
     }
 
-    public void addParent(String parentSha) {
-        parents.add(parentSha);
+    /**
+     * Set the parents.
+     */
+    public void setFirstParent(String firstParent) {
+        this.firstParent = firstParent;
+    }
+
+    public String getFirstParent() {
+        return firstParent;
+    }
+
+    public String getSecondParent() {
+        return secondParent;
+    }
+
+    public void setSecondParent(String secondParent){
+        this.secondParent = secondParent;
     }
 
 //    public void setMessage(String message){
@@ -132,21 +146,18 @@ public class Commit implements Serializable {
     }
 
     public String getSha(){
-        String idsString, parentsString;
+        String idsString;
         idsString = (ids == null)
                 ? ""
                 : ids.toString();
-        parentsString = (parents == null)
-                ? ""
-                : parents.toString();
-        return sha1(idsString+message+timestamp+parentsString);
+        return sha1(idsString+message+timestamp+firstParent+secondParent);
     }
     @Override
     public String toString() {
         return "\n===\n"
                 + "commit " + this.getSha() + '\n'
                 + "Date: " + this.timestamp + '\n'
-                + this.message + '\n'
-                + "Tracking Files: " + this.ids.keySet();
+                + this.message + '\n';
+//                + "Tracking Files: " + this.ids.keySet();
     }
 }
