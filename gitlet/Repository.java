@@ -284,6 +284,13 @@ public class Repository implements Serializable {
         }
     }
 
+    /**
+     * Takes the version of the file as it exists in the commit with the given id,
+     * and puts it in the working directory,
+     * overwriting the version of the file that’s already there if there is one.
+     * @param commitId The checkout commit.
+     * @param filename The checkout file.
+     */
     public void checkoutFile(String commitId, String filename){
         Commit previousCommit = (commitId == null)
                 ? getCurrentCommit()
@@ -299,8 +306,17 @@ public class Repository implements Serializable {
             System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
+
         File cwdFile = join(CWD, filename);
-        writeContents(cwdFile, (Object) readContents(sourceFile));
+        String currentSha = getCurrentCommit().getFilesha(filename);
+        boolean HasCurrentFile = (currentSha != null);
+        if (cwdFile.exists() && !HasCurrentFile){
+            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            System.exit(0);
+        }
+        if (sourceSha != currentSha) {
+            writeContents(cwdFile, (Object) readContents(sourceFile));
+        }
         removeStage(join(STAGING_DIR, filename));
     }
 
@@ -313,32 +329,25 @@ public class Repository implements Serializable {
         }
         Commit checkoutCommit = branches.get(branchName);
         Commit currentCommit = getCurrentCommit();
-//        System.out.println("checkoutCommit is: " + checkoutCommit);
-//        System.out.println("currentCommit is " + currentCommit);
+        System.out.println("checkoutCommit is: " + checkoutCommit + '\n');
+        System.out.println("currentCommit is " + currentCommit+ '\n');
         Set<String> checkoutFiles = checkoutCommit.getFiles();
-        Set<String> currentFiles = currentCommit.getFiles();
-        List<String> cwdFiles = Objects.requireNonNull(plainFilenamesIn(CWD));
-//        System.out.println("checkout files: " + checkoutFiles.toString());
-//        System.out.println("current files: " + currentFiles.toString());
-        System.out.println(cwdFiles);
+        Set<String> currentFiles = getCurrentCommit().getFiles();
+//        System.out.println("checkout files: " + checkoutFiles.toString()+ '\n');
+//        System.out.println("current files: " + currentFiles.toString()+ '\n'    );
         for (String f : checkoutFiles){
-            if (cwdFiles.contains(f) && !currentFiles.contains(f)){
-                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
-                System.exit(0);
-            }
+            checkoutFile(commit2sha(checkoutCommit), f);
         }
         for (String f : currentFiles){
             if (!checkoutFiles.contains(f)){
                 File file = join(CWD, f);
+                System.out.println("Warning: " + file + " will be deleted");
                 file.delete();
+                trackingArea.remove(f);
             }
         }
-        for (String f : checkoutFiles) {
-            File cwdFile = join(CWD, f);
-            File commitFile = sha2file.get(checkoutCommit.getFilesha(f));
-            writeContents(cwdFile, (Object) readContents(commitFile));
-        }
         currentBranch = branchName;
+        clearStagingArea();
     }
 
     public void branch(String branchName){
@@ -360,7 +369,23 @@ public class Repository implements Serializable {
         branches.remove(branchName);
     }
 
+    public void reset(String id){
+        Commit previousCommit = sha2commit.get(id);
+        if (previousCommit == null) {
+            System.out.println("No commit with that id exists.");
+        }
+        String backup = currentBranch;
+        branches.put("tepBranch", previousCommit);
+        checkoutBranch("tepBranch");
+        currentBranch = backup;
+        removeBranch("tepBranch");
+        branches.put(currentBranch, previousCommit);
+    }
+
     // Bellowed are some helper functions.
+    private void clearStagingArea(){
+        stagingArea.clear();
+    }
     /**
      * Removes the file from the stagingArea.
      * @param filename the file to be removed

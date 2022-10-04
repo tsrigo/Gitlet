@@ -157,7 +157,7 @@ public class Commit implements Serializable {
         return "\n===\n"
                 + "commit " + this.getSha() + '\n'
                 + "Date: " + this.timestamp + '\n'
-                + this.message + '\n';
-//                + "Tracking Files: " + this.ids.keySet();
+                + this.message + '\n'
+                + "Tracking Files: " + this.ids.keySet();
     }
 }

@@ -90,6 +90,10 @@ public class Main {
                 break;
             case "rm-branch":
                 repo.removeBranch(args[1]);
+                break;
+            case "reset":
+                repo.reset(args[1]);
+                break;
             default:
                 System.out.println("Undefined command.");
             // TODO: FILL THE REST IN
