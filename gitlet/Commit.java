@@ -154,10 +154,10 @@ public class Commit implements Serializable {
     }
     @Override
     public String toString() {
-        return "\n===\n"
+        return "===\n"
                 + "commit " + this.getSha() + '\n'
                 + "Date: " + this.timestamp + '\n'
-                + this.message + '\n'
-                + "Tracking Files: " + this.ids.keySet();
+                + this.message + '\n';
+//                + "Tracking Files: " + this.ids.keySet();
     }
 }

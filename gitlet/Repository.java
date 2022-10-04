@@ -308,13 +308,13 @@ public class Repository implements Serializable {
         }
 
         File cwdFile = join(CWD, filename);
-        String currentSha = getCurrentCommit().getFilesha(filename);
-        boolean HasCurrentFile = (currentSha != null);
+        String cwdSha = sha1((Object) readContents(cwdFile));
+        boolean HasCurrentFile = (sourceSha != null);
         if (cwdFile.exists() && !HasCurrentFile){
             System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
             System.exit(0);
         }
-        if (sourceSha != currentSha) {
+        if (!cwdSha.equals(sourceSha)) {
             writeContents(cwdFile, (Object) readContents(sourceFile));
         }
         removeStage(join(STAGING_DIR, filename));
@@ -392,7 +392,7 @@ public class Repository implements Serializable {
      */
     private void removeStage(File filename) {
         if (!stagingArea.contains(filename)) {
-            System.out.println(filename + " was already removed.");
+//            System.out.println(filename + " was already removed.");
             return;
         }
         stagingArea.remove(filename);
