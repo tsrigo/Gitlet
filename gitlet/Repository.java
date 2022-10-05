@@ -5,27 +5,23 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static gitlet.Utils.*;
 
-// TODO: any imports you need here
 
 /**
  * Represents a gitlet repository.
- *  TODO: It's a good idea to give a description here of what else this Class
+ *  It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
- * @author TODO
+ * @author Tsrigo
  */
 public class Repository implements Serializable {
     /**
-     * TODO: add instance variables here.
-     *
-     * List all instance variables of the Repository class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided two examples for you.
+     * The length of common SHA-1.
      */
-
+    static final int SHALENGTH = 40;
     /**
      * The current working directory.
      */
@@ -42,10 +38,6 @@ public class Repository implements Serializable {
      * The staging area.
      */
     public static final File STAGING_DIR = join(GITLET_DIR, ".staging");
-    /**
-     * Current commit: the commit in front of the currentBranch.
-     */
-//    private Commit currentCommit;
     /**
      * Current branch of commit tree.
      */
@@ -73,15 +65,16 @@ public class Repository implements Serializable {
     /**
      * Commits to SHA-1;
      */
-    private HashMap<Commit, String> Commit2Sha = new HashMap<>();
+    private HashMap<Commit, String> commit2Sha = new HashMap<>();
     /**
      * Set used to record what files have been staged for removal.
      */
     private HashSet<String> removingArea;
 
+
     public Repository() {
-//        LinkedList<Commit> commits = new LinkedList<>();
-        Commit initialCommit = new Commit("initial commit", "1970/02/01 00:00:00");
+        //LinkedList<Commit> commits = new LinkedList<>();
+        Commit initialCommit = new Commit("initial commit", "Wed Dec 31 16:00:00 1969 -0800");
 
         branches = new HashMap<>();
         branches.put("master", initialCommit);
@@ -93,7 +86,7 @@ public class Repository implements Serializable {
         removingArea = new HashSet<>();
 
         commit2sha(initialCommit);
-//        commits.addFirst(initialCommit);
+        //commits.addFirst(initialCommit);
     }
 
     public static Repository init() {
@@ -106,11 +99,13 @@ public class Repository implements Serializable {
         STAGING_DIR.mkdir();
         return new Repository();
     }
-    private Commit getCurrentCommit(){
-       return branches.get(currentBranch);
+
+    private Commit getCurrentCommit() {
+        return branches.get(currentBranch);
     }
+
     public void add(String filename) {
-//        System.out.println("Current commit is: " + currentCommit.toString());
+        //System.out.println("Current commit is: " + getCurrentCommit().toString());
         File augend = join(CWD, filename);
         File stagingFile = join(STAGING_DIR, filename);
         if (!augend.exists()) {
@@ -119,23 +114,29 @@ public class Repository implements Serializable {
         }
         byte[] contents = readContents(augend);
         String fileSha = sha1((Object) contents);
+        String trackedSha = trackingArea.get(filename);
         String existSha = getCurrentCommit().getFilesha(filename);
+        if (removingArea.contains(filename)) {
+            //System.out.println("DEBUG: The file will no longer be staged for removal");
+            removingArea.remove(filename);
+        }
         if (existSha != null && existSha.equals(fileSha)) {
-            System.out.println("File is already committed.");
+            //System.out.println("DEBUG: File is already committed.");
             if (stagingFile.exists()) {
                 removeStage(stagingFile);
                 stagingFile.delete();
             }
-            System.exit(0);
+            trackingArea.put(filename, fileSha);
+            return; // 上面还有需要保存的状态，不能直接exit(0)
         }
         stagingArea.add(stagingFile);
         trackingArea.put(filename, fileSha);
         writeContents(stagingFile, (Object) contents);
-//        System.out.println("The files you have staged are: " + stagingArea.toString());
+        //System.out.println("The files you have staged are: " + stagingArea.toString());
     }
 
-    public void commit(String message) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+    public void commit(String message, String givenBranch) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("E LLL dd hh:mm:ss yyyy -0800");
         Commit newCommit = new Commit(trackingArea, message, dtf.format(LocalDateTime.now()));
         if (stagingArea.isEmpty() && removingArea.isEmpty()) {
             System.out.println("No changes added to the commit.");
@@ -145,14 +146,15 @@ public class Repository implements Serializable {
         for (File X : stagingArea) {
             String S = sha1((Object) readContents(X));
             newCommit.addFile(X.getName(), S);
-//            sha2file.put(S, X);
         }
         newCommit.setFirstParent(commit2sha(getCurrentCommit()));    // Add a commit to the commit tree.
+        if (givenBranch != null) {
+            newCommit.setSecondParent(commit2sha(branches.get(givenBranch)));
+        }
         branches.put(currentBranch, newCommit);
-//        System.out.println("New currentCommit is: " + newCommit);
-//        System.out.println("Commit tree updated! The current commit tree is: \n" + branches.get(currentBranch).toString());
         String commitSha = commit2sha(newCommit);
-//        System.out.println("The new commit sha is "+commitSha);
+        //System.out.println("DEBUG: The new commit sha is "+commitSha);
+        //System.out.println("DEBUG: New currentCommit is: " + newCommit + '\n');
 
         File D = join(COMIT_DIR, commitSha);
         D.mkdir();
@@ -169,6 +171,7 @@ public class Repository implements Serializable {
     }
 
     public void rm(String filename) {
+        //System.out.println("DEBUG: Notice: " + filename + " will be rm");
         File file = join(STAGING_DIR, filename);
         if (stagingArea.isEmpty() && trackingArea.isEmpty()) {
             System.out.println("No reason to remove the file.");
@@ -177,31 +180,32 @@ public class Repository implements Serializable {
         if (stagingArea.contains(file)) {
             removeStage(file);
         }
-        if (getCurrentCommit().getFilesha(filename) != null) {    // tracking area will always be same with currentCommit.ids
-            System.out.println("Notice: " + filename + " will be deleted");
+        if (getCurrentCommit().getFilesha(filename) != null) {
+            // tracking area will always be same with currentCommit.ids
+            //System.out.println("Notice: " + filename + " will be deleted");
             removeTrack(filename);
+            removingArea.add(filename);
         }
-        removingArea.add(filename);
     }
 
     public void log() {
-        //TODO: log may not start from the very first of the current branch.
+        //QUESTION: log may not start from the very first of the current branch.
         Commit tep = branches.get(currentBranch);
-        while (tep != null){
+        while (tep != null) {
             System.out.println(tep);
             tep = sha2commit.get(tep.getFirstParent());
         }
     }
 
-    public void global_log() {
-        for (Commit x : Commit2Sha.keySet()) {
+    public void globalLog() {
+        for (Commit x : commit2Sha.keySet()) {
             System.out.println(x);
         }
     }
 
     public void find(String message) {
         boolean flag = false;
-        for (Commit x : Commit2Sha.keySet()) {
+        for (Commit x : commit2Sha.keySet()) {
             if (x.getMessage().equals(message)) {
                 System.out.println(commit2sha(x));
                 flag = true;
@@ -213,28 +217,28 @@ public class Repository implements Serializable {
         System.exit(0);
     }
 
-    public void status(){
+    public void status() {
         System.out.println("=== Branches ===");
-        for (String x: new TreeSet<>(branches.keySet())){
-            if (x.equals(currentBranch)){
+        for (String x : new TreeSet<>(branches.keySet())) {
+            if (x.equals(currentBranch)) {
                 System.out.print('*');
             }
             System.out.println(x);
         }
 
-        // TODO: This method is too ugly. Improve it.
+        // UPDATE: This method is too ugly. Improve it.
         System.out.println("\n=== Staged Files ===");
         List<String> tep = new ArrayList<>();
-        for (File f : stagingArea){
+        for (File f : stagingArea) {
             tep.add(f.getName());
         }
         Collections.sort(tep);
-        for (String s : tep){
+        for (String s : tep) {
             System.out.println(s);
         }
 
         System.out.println("\n=== Removed Files ===");
-        for (String f: new TreeSet<>(removingArea)){
+        for (String f : new TreeSet<>(removingArea)) {
             System.out.println(f);
         }
 
@@ -243,18 +247,18 @@ public class Repository implements Serializable {
         TreeSet<String> cwdFiles = new TreeSet<>(Objects.requireNonNull(plainFilenamesIn(CWD)));
         allFiles.addAll(cwdFiles);
         allFiles.addAll(trackingArea.keySet());
-        for (File f : stagingArea){
+        for (File f : stagingArea) {
             allFiles.add(f.getName());
         }
 
-        for (String f: allFiles){
+        for (String f : allFiles) {
             File stagingFile = join(STAGING_DIR, f);
             File cwdFile = join(CWD, f);
             // trackingSha refers to the f that was tracked in the last commit(current commit)
             // stagingSha refers to the f that is staged in the present commit(newCommit)
             String trackingSha = getCurrentCommit().getFilesha(f);
             String stagingSha = trackingArea.get(f);
-            // TODO: Is stagingArea can changed to type of String?
+            // QUESTION: Is stagingArea can changed to type of String?
             boolean isStaging = stagingArea.contains(stagingFile);
             boolean isTracking = (trackingSha != null);
             boolean inCwd = cwdFiles.contains(f);
@@ -264,11 +268,10 @@ public class Repository implements Serializable {
                 // if there is a file that is staged but not same with the tracked version, it will be marked modified.
                 String cwdSha = sha1((Object) readContents(cwdFile));
                 if (isTracking && !isStaging && !cwdSha.equals(trackingSha)
-                || isStaging && !cwdSha.equals(stagingSha)){
+                        || isStaging && !cwdSha.equals(stagingSha)) {
                     System.out.println(f + "(modified)");
                 }
-            }
-            else {
+            } else {
                 if (isTracking || isStaging) {
                     System.out.println(f + "(deleted)");
                 }
@@ -276,9 +279,9 @@ public class Repository implements Serializable {
         }
 
         System.out.println("\n=== Untracked Files ===");
-        for (String f: cwdFiles){
+        for (String f : cwdFiles) {
             boolean isTracking = (trackingArea.get(f) != null);
-            if (!isTracking){
+            if (!isTracking) {
                 System.out.println(f + "(untracked)");
             }
         }
@@ -288,60 +291,63 @@ public class Repository implements Serializable {
      * Takes the version of the file as it exists in the commit with the given id,
      * and puts it in the working directory,
      * overwriting the version of the file that’s already there if there is one.
+     *
      * @param commitId The checkout commit.
      * @param filename The checkout file.
      */
-    public void checkoutFile(String commitId, String filename){
-        Commit previousCommit = (commitId == null)
-                ? getCurrentCommit()
-                : sha2commit.get(commitId);
-        if (commitId != null && sha2commit.get(commitId) == null){
+    public void checkoutFile(String commitId, String filename) {
+        if (commitId != null && commitId.length() < SHALENGTH) {
+            commitId = findId(commitId);
+        }
+        Commit previousCommit = (commitId == null) ? getCurrentCommit() : sha2commit.get(commitId);
+        if (commitId != null && sha2commit.get(commitId) == null) {
             System.out.println("No commit with that id exists.");
             System.exit(0);
         }
 
         String sourceSha = previousCommit.getFilesha(filename);
         File sourceFile = sha2file.get(sourceSha);
-        if (sourceFile == null){
+        if (sourceFile == null) {
             System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
-
-        File cwdFile = join(CWD, filename);
-        String cwdSha = sha1((Object) readContents(cwdFile));
-        boolean HasCurrentFile = (sourceSha != null);
-        if (cwdFile.exists() && !HasCurrentFile){
-            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
-            System.exit(0);
-        }
-        if (!cwdSha.equals(sourceSha)) {
+        checkUntrack(filename, commitId);
+        File cwdFile = join(CWD, filename); // 安全措施要做牢！
+        String cwdSha = cwdFile.exists() ? sha1((Object) readContents(cwdFile)) : null;
+        if (!sourceSha.equals(cwdSha)) {
             writeContents(cwdFile, (Object) readContents(sourceFile));
         }
         removeStage(join(STAGING_DIR, filename));
+        trackingArea.put(filename, sourceSha);
     }
 
-    public void checkoutBranch(String branchName){
-        if (!branches.containsKey(branchName)){
+    public void checkoutBranch(String branchName) {
+        if (!branches.containsKey(branchName)) {
             System.out.println("No such branch exists.");
+            System.exit(0);
         }
-        if (branchName.equals(currentBranch)){
+        if (branchName.equals(currentBranch)) {
             System.out.println("No need to checkout the current branch.");
+            System.exit(0);
         }
         Commit checkoutCommit = branches.get(branchName);
         Commit currentCommit = getCurrentCommit();
-        System.out.println("checkoutCommit is: " + checkoutCommit + '\n');
-        System.out.println("currentCommit is " + currentCommit+ '\n');
+        //System.out.println("checkoutCommit is: " + checkoutCommit + '\n');
+        //System.out.println("currentCommit is " + currentCommit+ '\n');
         Set<String> checkoutFiles = checkoutCommit.getFiles();
         Set<String> currentFiles = getCurrentCommit().getFiles();
-//        System.out.println("checkout files: " + checkoutFiles.toString()+ '\n');
-//        System.out.println("current files: " + currentFiles.toString()+ '\n'    );
-        for (String f : checkoutFiles){
+        //System.out.println("checkout files: " + checkoutFiles.toString()+ '\n');
+        //System.out.println("current files: " + currentFiles.toString()+ '\n'    );
+        for (String f : checkoutFiles) {
+            checkUntrack(f, commit2sha(checkoutCommit));
+        }
+        for (String f : checkoutFiles) {
             checkoutFile(commit2sha(checkoutCommit), f);
         }
-        for (String f : currentFiles){
-            if (!checkoutFiles.contains(f)){
+        for (String f : currentFiles) {
+            if (!checkoutFiles.contains(f)) {
                 File file = join(CWD, f);
-                System.out.println("Warning: " + file + " will be deleted");
+                //System.out.println("DEBUG: Warning: " + file + " will be deleted");
                 file.delete();
                 trackingArea.remove(f);
             }
@@ -350,8 +356,8 @@ public class Repository implements Serializable {
         clearStagingArea();
     }
 
-    public void branch(String branchName){
-        if (branches.containsKey(branchName)){
+    public void branch(String branchName) {
+        if (branches.containsKey(branchName)) {
             System.out.println("A branch with that name already exists.");
             System.exit(0);
         }
@@ -359,20 +365,21 @@ public class Repository implements Serializable {
         branches.put(branchName, newBranch);
     }
 
-    public void removeBranch(String branchName){
-        if (!branches.containsKey(branchName)){
+    public void removeBranch(String branchName) {
+        if (!branches.containsKey(branchName)) {
             System.out.println("A branch with that name does not exist.");
         }
-        if (branchName.equals(currentBranch)){
+        if (branchName.equals(currentBranch)) {
             System.out.println("Cannot remove the current branch.");
         }
         branches.remove(branchName);
     }
 
-    public void reset(String id){
+    public void reset(String id) {
         Commit previousCommit = sha2commit.get(id);
         if (previousCommit == null) {
             System.out.println("No commit with that id exists.");
+            System.exit(0);
         }
         String backup = currentBranch;
         branches.put("tepBranch", previousCommit);
@@ -382,17 +389,187 @@ public class Repository implements Serializable {
         branches.put(currentBranch, previousCommit);
     }
 
+    public void merge(String givenBranch) {
+        Commit givenCommit = branches.get(givenBranch);
+        Commit headCommit = getCurrentCommit();
+        if (givenCommit == null) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        Commit splitCommit = getSplitCommit(givenCommit, headCommit);
+        String givenSha = commit2sha(givenCommit);
+        String headSha = commit2sha(headCommit);
+        String splitSha = commit2sha(splitCommit);
+        if (givenBranch.equals(currentBranch)) {
+            System.out.println("Cannot merge a branch with itself.");
+            System.exit(0);
+        }
+        if (splitSha.equals(givenSha)) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            System.exit(0);
+        }
+        if (splitSha.equals(headSha)) {
+            System.out.println("Current branch fast-forwarded.");
+            checkoutBranch(givenBranch);
+            System.exit(0);
+        }
+        if (!stagingArea.isEmpty() || !removingArea.isEmpty()) {
+            System.out.println("You have uncommitted changes.");
+            System.exit(0);
+        }
+        Set<String> givenFiles = givenCommit.getFiles();
+        for (String f : givenFiles) {
+            checkUntrack(f, givenSha);
+        }
+        Set<String> allFiles = new HashSet<>();
+        allFiles.addAll(headCommit.getFiles());
+        allFiles.addAll(givenFiles);
+        allFiles.addAll(splitCommit.getFiles());
+        for (String f : allFiles) {
+            String splitfilesha = splitCommit.getFilesha(f);
+            String headfilesha = headCommit.getFilesha(f);
+            String givenfilesha = givenCommit.getFilesha(f);
+            if (splitfilesha != null) {
+                if (givenfilesha == null) {
+                    if (headfilesha == null || splitfilesha.equals(headfilesha)) {
+                        removeTrack(f);
+                        continue;
+                    }
+                    sloveConflict(headSha, givenSha, f);
+                    add(f);
+                } else if (headfilesha == null) {
+                    if (splitfilesha.equals(givenfilesha)) {
+                        removeTrack(f);
+                        continue;
+                    }
+                    sloveConflict(headSha, givenSha, f);
+                    add(f);
+                } else {
+                    boolean headModified = !splitfilesha.equals(headfilesha);
+                    boolean givenModified = !splitfilesha.equals(givenfilesha);
+                    if (!headModified && givenModified) {
+                        checkoutFile(givenSha, f);
+                        add(f);
+                    } else if (headModified && givenModified && !headfilesha.equals(givenfilesha)) {
+                        sloveConflict(headSha, givenSha, f);
+                        add(f);
+                    }
+                }
+            } else {
+                if (headfilesha == null) { // givenSha 不会为null，因为allfiles包含的是这三者的文件。
+                    checkoutFile(givenSha, f);
+                } else if (givenfilesha == null) {
+                    checkoutFile(headSha, f);
+                } else if (!headfilesha.equals(givenfilesha)) {
+                    sloveConflict(headSha, givenSha, f);
+                }
+                add(f);
+            }
+        }
+        commit("Merged " + givenBranch + " into " + currentBranch + ".", givenBranch);
+    }
+
     // Bellowed are some helper functions.
-    private void clearStagingArea(){
+    private void sloveConflict(String currentSha, String givenSha, String filename) {
+        System.out.println("Encountered a merge conflict.");
+        String currentFileSha = sha2commit.get(currentSha).getFilesha(filename);
+        File currentFile = sha2file.get(currentFileSha);
+        String givenFileSha = sha2commit.get(givenSha).getFilesha(filename);
+        File givenFile = sha2file.get(givenFileSha);
+
+        byte[] currentContent, givenContent;
+        if (currentFile == null || !currentFile.exists()) {
+            currentContent = "".getBytes();
+        } else {
+            currentContent = readContents(currentFile);
+        }
+        if (givenFile == null || !givenFile.exists()) {
+            givenContent = "".getBytes();
+        } else {
+            givenContent = readContents(givenFile);
+        }
+        currentFile = join(CWD, filename);
+        String contents = "<<<<<<< HEAD\n" + new String(currentContent) + "=======\n"
+                + new String(givenContent) + ">>>>>>>\n";
+        writeContents(currentFile, contents);
+    }
+
+    private Commit getSplitCommit(Commit x, Commit y) {
+        HashSet<String> xAncestor = new HashSet<>();
+        Queue<String> tep = new LinkedBlockingQueue<>();
+        tep.add(commit2sha(x));
+        while (!tep.isEmpty()) {
+            String t = tep.poll();
+            xAncestor.add(t);
+            String p1 = sha2commit.get(t).getFirstParent(), p2 = sha2commit.get(t).getSecondParent();
+            if (p1 != null) {
+                tep.add(p1);
+            }
+            if (p2 != null) {
+                tep.add(p2);
+            }
+            if (p1 == null && p2 == null) {
+                break;
+            }
+        }
+        tep.clear();
+        tep.add(commit2sha(y));
+        while (!tep.isEmpty()) {
+            String t = tep.poll();
+            if (xAncestor.contains(t)) {
+                return sha2commit.get(t);
+            }
+            xAncestor.add(t);
+            String p1 = sha2commit.get(t).getFirstParent(), p2 = sha2commit.get(t).getSecondParent();
+            if (p1 != null) {
+                tep.add(p1);
+            }
+            if (p2 != null) {
+                tep.add(p2);
+            }
+            if (p1 == null && p2 == null) {
+                break;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Untrack has several condition:
+     * 1. Files present in the working directory but neither staged for addition nor tracked.
+     * 2. Files that have been staged for removal, but then re-created without Gitlet’s knowledge.
+     *
+     * @param filename
+     * @param commitId
+     * @return
+     */
+    private boolean checkUntrack(String filename, String commitId) {
+        File cwdFile = join(CWD, filename);
+        if (commitId == null || !cwdFile.exists()) {
+            return true;
+        }
+        String cwdFilesha = sha1((Object) readContents(cwdFile));
+        String checkoutFile = sha2commit.get(commitId).getFilesha(filename);
+        boolean isTracking = (trackingArea.get(filename) != null);
+        if (cwdFile.exists() && !isTracking && !cwdFilesha.equals(checkoutFile)) {
+            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            System.exit(0);
+        }
+        return true;
+    }
+
+    private void clearStagingArea() {
         stagingArea.clear();
     }
+
     /**
      * Removes the file from the stagingArea.
+     *
      * @param filename the file to be removed
      */
     private void removeStage(File filename) {
         if (!stagingArea.contains(filename)) {
-//            System.out.println(filename + " was already removed.");
+            //System.out.println("DEBUG: "filename + " was already removed.");
             return;
         }
         stagingArea.remove(filename);
@@ -400,6 +577,7 @@ public class Repository implements Serializable {
 
     /**
      * Removes the file from the trackingArea and the workingArea.
+     *
      * @param filename the file to be removed
      */
     private void removeTrack(String filename) {
@@ -408,11 +586,23 @@ public class Repository implements Serializable {
         workingFile.delete();
     }
 
+    private String findId(String id) {
+        for (String f : sha2commit.keySet()) {
+            //System.out.println("DEBUG : id is : " + id + "  f is : " + f.substring(0, id.length()));
+            if (id.equals(f.substring(0, id.length()))) {
+                return f;
+            }
+        }
+        System.out.println("No commit with that id exists.");
+        System.exit(0);
+        return null;
+    }
+
     private String commit2sha(Commit commit) {
-        String t = Commit2Sha.get(commit);
+        String t = commit2Sha.get(commit);
         if (t == null) {
             t = commit.getSha();
-            Commit2Sha.put(commit, t);
+            commit2Sha.put(commit, t);
             sha2commit.put(t, commit);
         }
         return t;
@@ -422,5 +612,4 @@ public class Repository implements Serializable {
      * Or remove the file in tracking area.
      * @param filename The file to be removed.
      */
-    /* TODO: fill in the rest of this class. */
 }
